@@ -1,0 +1,18 @@
+/* Footer branding on all pages */
+.custom-footer {
+  text-align: center;
+  padding: 1.5rem 0;
+  margin-top: 3rem;
+  border-top: 1px solid var(--vp-c-divider);
+  color: var(--vp-c-text-2);
+  font-size: 0.85rem;
+}
+
+.custom-footer a {
+  color: var(--vp-c-brand-1);
+  text-decoration: none;
+}
+
+.custom-footer a:hover {
+  text-decoration: underline;
+}

@@ -4,11 +4,17 @@ export default defineConfig({
   title: 'OpenClaw Security',
   description: 'A guide to understanding and hardening OpenClaw',
   themeConfig: {
+    siteTitle: 'OpenClaw Security',
     nav: [
       { text: 'Overview', link: '/' },
       { text: 'Goto Spec', link: '/goto-spec' },
-      { text: 'Hardening', link: '/audit-hardening' }
+      { text: 'Hardening', link: '/audit-hardening' },
+      { text: 'EQTY Lab', link: 'https://eqtylab.io' }
     ],
+    footer: {
+      message: 'Made by <a href="https://eqtylab.io">EQTY Lab</a>',
+      copyright: ''
+    },
     sidebar: [
       {
         text: 'Guide',
