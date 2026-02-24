@@ -12,6 +12,105 @@ At the innermost ring are the **tools** themselves, governed by a 7-layer policy
 
 The design philosophy is **access control before intelligence**. The model is treated as an untrusted interpreter, contained at the center of every ring. A deny at any layer stops execution unconditionally. The operator sits outside all rings as the ultimate authority over what the system is permitted to do.
 
+## Configuration Overview
+
+Every security-relevant setting in OpenClaw, organized by ring.
+
+### Gateway & Authentication
+
+- `gateway.auth.mode` — `token`, `password`, `trusted-proxy`, or `none`
+- `gateway.auth.token` — shared secret (48+ hex chars recommended)
+- `gateway.auth.password` — alternative to token auth
+- `gateway.auth.rateLimit.maxAttempts` — failed auth attempts before lockout (default: 10)
+- `gateway.auth.rateLimit.windowMs` — rate limit window (default: 60000)
+- `gateway.auth.rateLimit.lockoutMs` — lockout duration (default: 300000)
+- `gateway.auth.trustedProxies` — CIDR list for reverse proxy setups
+- `gateway.auth.requiredHeaders` — headers the proxy must provide
+- `gateway.auth.userHeader` — header carrying authenticated user identity
+- `gateway.auth.allowUsers` — accepted user identities from proxy
+- `gateway.bind` — `loopback`, `lan`, `tailnet`, `auto`, or custom address
+- `gateway.controlUi.dangerouslyDisableDeviceAuth` — disable Ed25519 device checks (never in production)
+- `gateway.controlUi.allowInsecureAuth` — allow auth without device identity (localhost only)
+- `gateway.remote.tlsFingerprint` — certificate pin for remote node connections
+- `tailscale.mode` — `off`, `serve`, or `funnel`
+
+### Sessions & Channels
+
+- `session.dmScope` — `per-channel-peer`, `per-account-channel-peer`, or `global`
+- `channels.<provider>.dmPolicy` — `pairing`, `allowlist`, `open`, or `disabled`
+- `channels.<provider>.allowFrom` — explicit sender allowlist
+- `channels.<provider>.groups.*.groupPolicy` — `allowlist`, `requireMention`, or `disabled`
+- `channels.<provider>.groups.*.requireMention` — require @mention in groups
+- `channels.<provider>.groups.*.groupAllowFrom` — per-group sender allowlist
+- `channels.<provider>.groups.*.toolsBySender.*` — per-sender tool policy in groups
+
+### Tools & Exec
+
+- `tools.profile` — `minimal`, `coding`, `messaging`, or `full`
+- `tools.allow` — explicit tool allowlist
+- `tools.deny` — explicit tool deny list
+- `tools.fs.workspaceOnly` — restrict filesystem tools to workspace directory
+- `tools.exec.security` — `deny`, `allowlist`, or `full`
+- `tools.exec.ask` — `off`, `on-miss`, or `always`
+- `tools.exec.allowlist` — permitted command patterns
+- `tools.exec.safeBins` — binaries allowed without approval (with per-binary constraints)
+- `tools.exec.applyPatch.workspaceOnly` — restrict patch application to workspace
+
+### Sandbox
+
+- `tools.sandbox.mode` — `off`, `non-main`, or `all`
+- `tools.sandbox.scope` — `session`, `agent`, or `shared`
+- `tools.sandbox.workspaceAccess` — `none`, `ro`, or `rw`
+- `tools.sandbox.seccomp` — custom seccomp profile
+- `tools.sandbox.apparmor` — AppArmor profile
+- `tools.sandbox.pidsLimit` — fork bomb protection
+- `tools.sandbox.memory` — memory limit
+- `tools.sandbox.cpu` — CPU shares limit
+
+### Elevated Mode
+
+- `tools.elevated.enabled` — enable host escape hatch (default: false)
+- `tools.elevated.allowFrom.<provider>` — per-provider sender allowlist (never wildcard)
+
+### Hooks
+
+- `hooks.token` — bearer token for hook endpoint (must differ from gateway token)
+- `hooks.allowRequestSessionKey` — allow external session key injection (default: false)
+- `hooks.allowedSessionKeyPrefixes` — constrain allowed session key patterns
+- `hooks.allowUnsafeExternalContent` — disable content wrapping (default: false)
+
+### Plugins
+
+- `plugins.allow` — trusted plugin ID allowlist
+- `plugins.deny` — explicit plugin deny list (takes precedence)
+
+### Agent Configuration
+
+- `agents.<id>.model` — model selection per agent
+- `agents.<id>.workspace` — workspace directory (controls SOUL.md, bootstrap files)
+- `agents.<id>.skipBootstrap` — skip bootstrap file injection
+- `agents.<id>.elevatedDefault` — default elevated mode state
+- `agents.<id>.tools.allow` / `tools.deny` — per-agent tool policy
+- `agents.defaults.ownerDisplay` — `raw` or `hash` (hash recommended)
+- `agents.defaults.ownerDisplaySecret` — HMAC secret for hashed owner IDs
+- `agents.defaults.heartbeat.prompt` — custom heartbeat text injected into system prompt
+- `agents.defaults.bootstrapMaxChars` — per-file bootstrap character limit
+- `agents.defaults.bootstrapTotalMaxChars` — total bootstrap character limit
+
+### Credentials & Logging
+
+- `logging.redactSensitive` — `tools` (default) or `off`
+- `logging.redactPatterns` — custom regex patterns (replaces defaults)
+- File permissions: `~/.openclaw/` at `0o700`, all credential files at `0o600`
+
+### Discovery
+
+- `discovery.mdns.mode` — `off`, `minimal`, or `full`
+- `discovery.wideArea.enabled` — DNS-SD over Tailnet (default: false)
+- `OPENCLAW_DISABLE_BONJOUR=1` — kill switch for mDNS
+
+---
+
 ## Hardening Controls
 
 The following OSCAL-inspired schema defines every hardening control for OpenClaw. Each control specifies a config path, recommended value, severity, and validation method. Use `openclaw security audit --json` to assess compliance programmatically.
