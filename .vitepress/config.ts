@@ -9,7 +9,6 @@ export default defineConfig({
       { text: 'Overview', link: '/' },
       { text: 'Goto Spec', link: '/goto-spec' },
       { text: 'Checklist', link: '/security-checklist' },
-      { text: 'Hardening', link: '/audit-hardening' },
       { text: 'EQTY Lab', link: 'https://eqtylab.io' }
     ],
     footer: {
