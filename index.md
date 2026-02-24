@@ -61,6 +61,7 @@ Every security domain, what it covers, and where to find the details.
 | ClawHub & Skills Safety | [clawhub-skills-safety.md](clawhub-skills-safety.md) | ClawHub registry, VirusTotal scanning, skill scanner, moderation, supply chain risks |
 | Audit & Hardening | [audit-hardening.md](audit-hardening.md) | Security audit CLI, all checkIds, detect-secrets |
 | Formal Verification | [formal-verification.md](formal-verification.md) | TLA+/TLC models, gateway exposure, pairing, routing isolation, concurrency proofs |
+| **Security Checklist** | [security-checklist.md](security-checklist.md) | **Interactive RMF-style assessment, 77 controls, localStorage persistence, deployment profiles** |
 | **Goto Spec** | [goto-spec.md](goto-spec.md) | **Enterprise hardening baseline, OSCAL-inspired control schema, validation** |
 
 ---

@@ -8,6 +8,7 @@ export default defineConfig({
     nav: [
       { text: 'Overview', link: '/' },
       { text: 'Goto Spec', link: '/goto-spec' },
+      { text: 'Checklist', link: '/security-checklist' },
       { text: 'Hardening', link: '/audit-hardening' },
       { text: 'EQTY Lab', link: 'https://eqtylab.io' }
     ],
@@ -29,6 +30,7 @@ export default defineConfig({
           { text: 'Pi Agent Security', link: '/pi-agent-security' },
           { text: 'ClawHub & Skills Safety', link: '/clawhub-skills-safety' },
           { text: 'Credentials & Secrets', link: '/credentials-secrets' },
+          { text: 'Security Checklist', link: '/security-checklist' },
           { text: 'Audit & Hardening', link: '/audit-hardening' },
           { text: 'Formal Verification', link: '/formal-verification' }
         ]
