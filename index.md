@@ -75,6 +75,90 @@ The following classes of findings are **out of scope** and will not be treated a
 
 ---
 
+## What Does Operating OpenClaw Actually Look Like?
+
+A common question: "Is this one config file I drop in and everything is secure?" The short answer is **almost** — but it helps to understand what you're managing.
+
+### One Primary Config File
+
+Everything lives in `~/.openclaw/openclaw.json`. This is a JSON5 file (supports comments, trailing commas) and it holds gateway auth, channel settings, tool policies, sandbox config, agent definitions, hooks, plugins — all of it. You can put your entire security posture in this single file.
+
+For larger deployments, you can split it using `$include`:
+
+```json5
+{
+  gateway: { $include: "./gateway.json5" },
+  channels: { $include: ["./channels/whatsapp.json5", "./channels/telegram.json5"] },
+  agents: { $include: "./agents.json5" },
+}
+```
+
+Includes deep-merge in order, are circular-include protected (10-level depth limit), and resolve relative to the including file's directory.
+
+### Secrets Stay in Environment Variables
+
+Sensitive values like API keys and bot tokens don't belong in the config file. Reference them with `${VAR}` substitution:
+
+```json5
+{
+  gateway: { auth: { token: "${OPENCLAW_GATEWAY_TOKEN}" } },
+  channels: { telegram: { botToken: "${TELEGRAM_BOT_TOKEN}" } },
+}
+```
+
+Set the actual values via process environment (systemd, Kubernetes secrets, `.env` file). Missing variables cause a startup error — no silent fallback to empty.
+
+### The Filesystem Layout
+
+Everything lives under `~/.openclaw/`. You create the config file; OpenClaw auto-manages the rest.
+
+```
+~/.openclaw/                          # State root (mode 0o700)
+├── openclaw.json                     # Your config (mode 0o600)
+├── .env                              # Optional env var fallback
+├── identity/
+│   └── device.json                   # Ed25519 keypair (auto-generated, mode 0o600)
+├── credentials/
+│   ├── oauth.json                    # OAuth tokens (auto-managed)
+│   ├── whatsapp/<accountId>/creds.json
+│   └── <channel>-allowFrom.json      # Pairing allowlists
+├── agents/
+│   ├── main/agent/                   # Default agent
+│   │   ├── auth-profiles.json        # Per-agent API keys (mode 0o600)
+│   │   ├── sessions/                 # Conversation transcripts
+│   │   └── workspace/                # Agent workspace (SOUL.md, SKILL.md live here)
+│   └── <agentId>/agent/              # Additional agents (same structure)
+├── extensions/<pluginId>/            # Installed plugins
+└── sandboxes/                        # Docker sandbox workspaces
+```
+
+### What You Manage vs. What's Auto-Managed
+
+| You create and maintain | OpenClaw auto-manages |
+|------------------------|----------------------|
+| `openclaw.json` (config) | `identity/device.json` (Ed25519 keypair) |
+| Environment variables (secrets) | `credentials/oauth.json` (token refresh) |
+| SOUL.md, SKILL.md (agent persona/skills) | `credentials/<channel>-allowFrom.json` (pairing) |
+| Plugin installations | `agents/<id>/sessions/` (transcripts) |
+| | Config backups (`.bak` files) |
+
+### Validation Is Strict
+
+OpenClaw rejects invalid config at startup — unknown keys, type mismatches, missing required fields. The gateway refuses to start rather than run with bad config. Run `openclaw security audit --fix` to auto-remediate file permissions.
+
+### For Enterprise Deployments
+
+A typical hardened deployment manages:
+
+- **1 config file** (or 2-5 with `$include` splits)
+- **5-20 environment variables** (API keys, tokens, secrets)
+- **1 directory** (`~/.openclaw/`) with everything else auto-managed inside it
+- **Per-agent workspaces** with SOUL.md/SKILL.md for agent behavior
+
+It is not a distributed multi-file system like Kubernetes manifests. It is closer to a single `nginx.conf` or `docker-compose.yml` — one file that defines the whole system, with secrets injected via environment.
+
+---
+
 ## Quick Start: Hardened Baseline
 
 Copy this into your `openclaw.json` for a locked-down starting point. Relax permissions deliberately from here.
