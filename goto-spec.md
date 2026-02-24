@@ -4,9 +4,9 @@
 
 OpenClaw's security model is a series of concentric rings. Every request, regardless of origin, enters through the **gateway** -- the outermost ring. The gateway enforces authentication (token, password, or trusted-proxy modes), verifies device identity via Ed25519 challenge-response, requires TLS 1.3 as a minimum, and applies rate limiting. Entry points include messaging channels (WhatsApp, Telegram, Discord, Slack), webhook hooks (authenticated with a separate bearer token), and the direct API. If authentication fails at the gateway, no inner ring is reached. Nothing else runs.
 
-Once past the gateway, each sender is assigned an isolated **session**. Sessions provide per-sender conversation context so that one user's state never bleeds into another's. Session keys function as routing keys, not as auth boundaries -- the gateway has already established identity. DM policies (pairing, allowlist, disabled) and group policies (allowlist, requireMention, disabled) determine which senders are permitted to interact at all. A sender who does not satisfy the channel policy is dropped before reaching any tool or model.
+Once past the gateway, each sender is assigned an isolated **session**. Sessions provide per-sender conversation context so that one user's state never bleeds into another's. Session keys function as routing keys, not as auth boundaries -- the gateway has already established identity. DM policies (pairing, allowlist, disabled) and group policies (allowlist, open, disabled) with a separate requireMention boolean determine which senders are permitted to interact at all. A sender who does not satisfy the channel policy is dropped before reaching any tool or model.
 
-Inside the session boundary sits the **sandbox** -- a Docker container that isolates agent execution from the host. Unconditional hardening is applied to every container: read-only root filesystem, no network access, all Linux capabilities dropped, and no-new-privileges. On top of that base, operators configure the sandbox mode (off, non-main, or all agents), container scope (per-session, per-agent, or shared), and workspace access level (none, read-only, or read-write). Elevated mode is the controlled escape hatch that allows host execution, gated by per-provider allowFrom lists that restrict which senders can activate it.
+Inside the session boundary sits the **sandbox** -- a Docker container that isolates agent execution from the host. The `no-new-privileges` flag is hardcoded on every container. Read-only root filesystem, no network access, and all Linux capabilities dropped are secure defaults that apply unless explicitly overridden. On top of that base, operators configure the sandbox mode (off, non-main, or all agents), container scope (per-session, per-agent, or shared), and workspace access level (none, read-only, or read-write). Elevated mode is the controlled escape hatch that allows host execution, gated by per-provider allowFrom lists that restrict which senders can activate it.
 
 At the innermost ring are the **tools** themselves, governed by a 7-layer policy pipeline: Profile, Provider, Global Allow/Deny, Provider Allow/Deny, Agent, Agent Provider, and Group. Deny always wins at every layer. Shell execution passes through its own approval system with security modes (deny, allowlist, full) and ask modes (off, on-miss, always). The safeBins mechanism enforces per-binary constraints on allowed arguments and flags.
 
@@ -52,13 +52,13 @@ Every client that connects over WebSocket must prove its identity via Ed25519 ch
 
 ### Sessions & Channels
 
-Control who can message the agent and prevent conversations from leaking between users. Set `dmScope` to `per-channel-peer` so each sender gets their own isolated session. Use `pairing` or `allowlist` DM policies to stop random people from chatting with your bot. In groups, require @mention so the agent doesn't respond to every message. Use `toolsBySender` to give different group members different capabilities.
+Control who can message the agent and prevent conversations from leaking between users. Set `dmScope` to `per-channel-peer` (or `per-peer` for cross-channel isolation) so each sender gets their own isolated session. Use `pairing` or `allowlist` DM policies to stop random people from chatting with your bot. In groups, require @mention so the agent doesn't respond to every message. Use `toolsBySender` to give different group members different capabilities.
 
-- `session.dmScope` — `per-channel-peer`, `per-account-channel-peer`, or `global`
+- `session.dmScope` — `per-peer`, `per-channel-peer`, `per-account-channel-peer`, or `global`
 - `channels.<provider>.dmPolicy` — `pairing`, `allowlist`, `open`, or `disabled`
 - `channels.<provider>.allowFrom` — explicit sender allowlist
-- `channels.<provider>.groups.*.groupPolicy` — `allowlist`, `requireMention`, or `disabled`
-- `channels.<provider>.groups.*.requireMention` — require @mention in groups
+- `channels.<provider>.groups.*.groupPolicy` — `allowlist`, `open`, or `disabled`
+- `channels.<provider>.groups.*.requireMention` — require @mention in groups (separate boolean, not a policy value)
 - `channels.<provider>.groups.*.groupAllowFrom` — per-group sender allowlist
 - `channels.<provider>.groups.*.toolsBySender.*` — per-sender tool policy in groups
 
@@ -91,7 +91,7 @@ Isolate agent execution from the host. Set `mode` to `all` so every agent runs i
 
 ### Elevated Mode
 
-Elevated mode lets the agent break out of the sandbox and execute on the host. Keep it disabled unless you have a specific need for host-level operations. If you enable it, lock `allowFrom` to specific sender IDs per provider — never use a wildcard. `/elevated on` requires approval per command. `/elevated full` removes all restrictions.
+Elevated mode lets the agent break out of the sandbox and execute on the host. Keep it disabled unless you have a specific need for host-level operations. If you enable it, lock `allowFrom` to specific sender IDs per provider — never use a wildcard. `/elevated on` requires approval per command. `/elevated ask` prompts before each elevated action. `/elevated full` removes all restrictions. `/elevated off` disables elevated mode entirely.
 
 - `tools.elevated.enabled` — enable host escape hatch (default: false)
 - `tools.elevated.allowFrom.<provider>` — per-provider sender allowlist (never wildcard)
@@ -121,8 +121,8 @@ How you prompt the agent matters. SOUL.md defines the agent's persona and tone �
 - `agents.<id>.skipBootstrap` — skip bootstrap file injection
 - `agents.<id>.elevatedDefault` — default elevated mode state
 - `agents.<id>.tools.allow` / `tools.deny` — per-agent tool policy
-- `agents.defaults.ownerDisplay` — `raw` or `hash` (hash recommended)
-- `agents.defaults.ownerDisplaySecret` — HMAC secret for hashed owner IDs
+- `commands.ownerDisplay` — `raw` or `hash` (hash recommended)
+- `commands.ownerDisplaySecret` — HMAC secret for hashed owner IDs
 - `agents.defaults.heartbeat.prompt` — custom heartbeat text injected into system prompt
 - `agents.defaults.bootstrapMaxChars` — per-file bootstrap character limit
 - `agents.defaults.bootstrapTotalMaxChars` — total bootstrap character limit
@@ -349,7 +349,7 @@ The following OSCAL-inspired schema defines every hardening control for OpenClaw
                 "id": "sess-1_scope",
                 "label": "DM scope",
                 "value": "per-channel-peer",
-                "select": { "choice": ["per-channel-peer", "per-account-channel-peer", "global"] }
+                "select": { "choice": ["per-peer", "per-channel-peer", "per-account-channel-peer", "global"] }
               }
             ],
             "props": [
@@ -357,7 +357,7 @@ The following OSCAL-inspired schema defines every hardening control for OpenClaw
             ],
             "parts": {
               "statement": "DM sessions MUST be scoped per-sender to prevent cross-user context leakage.",
-              "guidance": "Use 'per-channel-peer' (default) or 'per-account-channel-peer' for multi-account. Never 'global' for multi-user deployments.",
+              "guidance": "Use 'per-channel-peer' (default) or 'per-account-channel-peer' for multi-account. 'per-peer' scopes by sender across all channels. Never 'global' for multi-user deployments.",
               "check": "Verify session.dmScope in openclaw.json"
             }
           }
@@ -604,7 +604,7 @@ The following OSCAL-inspired schema defines every hardening control for OpenClaw
             ],
             "parts": {
               "statement": "Elevated mode MUST be disabled unless host execution is explicitly required.",
-              "guidance": "Elevated bypasses the sandbox. /elevated on = host + approval. /elevated full = host + no restrictions.",
+              "guidance": "Elevated bypasses the sandbox. 4 levels: /elevated off, /elevated on (host + approval), /elevated ask (prompt per action), /elevated full (host + no restrictions).",
               "check": "Verify tools.elevated.enabled in openclaw.json"
             }
           },
@@ -756,7 +756,7 @@ The following OSCAL-inspired schema defines every hardening control for OpenClaw
           {
             "id": "agent-1",
             "title": "Owner Identity Display",
-            "configPath": "agents.defaults.ownerDisplay",
+            "configPath": "commands.ownerDisplay",
             "params": [
               {
                 "id": "agent-1_display",
@@ -771,7 +771,7 @@ The following OSCAL-inspired schema defines every hardening control for OpenClaw
             "parts": {
               "statement": "Owner identity SHOULD be hashed to prevent PII exposure in transcripts.",
               "guidance": "Hash mode uses HMAC-SHA256 with ownerDisplaySecret. Raw exposes phone numbers/usernames.",
-              "check": "Verify agents.defaults.ownerDisplay in openclaw.json"
+              "check": "Verify commands.ownerDisplay in openclaw.json"
             }
           },
           {

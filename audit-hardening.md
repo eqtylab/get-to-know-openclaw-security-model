@@ -55,10 +55,13 @@ openclaw security audit --json   # Machine-readable output
 | gateway.real_ip_fallback_enabled | warn/critical | X-Real-IP spoofing risk |
 | gateway.token_too_short | warn | Gateway token too short |
 | gateway.trusted_proxies_missing | warn | No trusted proxies configured |
-| gateway.trusted_proxy_no_proxies | warn | Trusted-proxy mode without proxies |
-| gateway.trusted_proxy_no_user_header | warn | No user header configured |
+| gateway.trusted_proxy_no_proxies | critical | Trusted-proxy mode without proxies |
+| gateway.trusted_proxy_no_user_header | critical | No user header configured |
 | gateway.trusted_proxy_no_allowlist | warn | No user allowlist |
 | gateway.auth_no_rate_limit | warn | No auth rate limiting configured |
+| gateway.tailscale_serve | info | Tailscale Serve exposure |
+| gateway.trusted_proxy_auth | critical | Trusted-proxy auth misconfiguration |
+| gateway.http.session_key_override_enabled | info | HTTP session key override enabled |
 | gateway.probe_failed | warn | Live probe failed (--deep) |
 
 ### Discovery
@@ -72,20 +75,30 @@ openclaw security audit --json   # Machine-readable output
 | checkId | Severity | Auto-fix |
 |---------|----------|----------|
 | fs.state_dir.perms_world_writable | critical | yes |
-| fs.state_dir.perms_group_writable | critical | yes |
+| fs.state_dir.perms_group_writable | warn | yes |
 | fs.state_dir.perms_readable | warn | yes |
 | fs.state_dir.symlink | warn | no |
 | fs.config.perms_writable | critical | yes |
 | fs.config.perms_world_readable | critical | yes |
 | fs.config.perms_group_readable | warn | yes |
 | fs.config.symlink | warn | no |
+| fs.synced_dir | warn | no |
+| fs.config_include.perms_writable | critical | yes |
+| fs.config_include.perms_world_readable | critical | yes |
+| fs.config_include.perms_group_readable | warn | yes |
+| fs.credentials_dir.perms_writable | critical | yes |
+| fs.credentials_dir.perms_readable | warn | yes |
+| fs.auth_profiles.perms_writable | critical | yes |
+| fs.auth_profiles.perms_readable | warn | yes |
+| fs.sessions_store.perms_readable | warn | yes |
+| fs.log_file.perms_readable | warn | yes |
 
 ### Browser
 
 | checkId | Severity |
 |---------|----------|
 | browser.control_invalid_config | warn |
-| browser.control_no_auth | warn |
+| browser.control_no_auth | critical |
 | browser.remote_cdp_http | warn |
 
 ### Logging
@@ -100,7 +113,7 @@ openclaw security audit --json   # Machine-readable output
 |---------|----------|
 | hooks.token_too_short | warn |
 | hooks.token_reuse_gateway_token | critical |
-| hooks.path_root | warn |
+| hooks.path_root | critical |
 | hooks.default_session_key_unset | warn |
 | hooks.request_session_key_enabled | warn/critical |
 | hooks.request_session_key_prefixes_missing | warn/critical |
@@ -110,9 +123,8 @@ openclaw security audit --json   # Machine-readable output
 | checkId | Severity |
 |---------|----------|
 | config.insecure_or_dangerous_flags | warn |
-| config.secrets.gateway_token_in_config | warn |
 | config.secrets.gateway_password_in_config | warn |
-| config.secrets.hooks_token_in_config | warn |
+| config.secrets.hooks_token_in_config | info |
 
 ### Tools/Exec
 
@@ -121,7 +133,7 @@ openclaw security audit --json   # Machine-readable output
 | tools.exec.host_sandbox_no_sandbox_defaults | warn |
 | tools.exec.host_sandbox_no_sandbox_agents | warn |
 | tools.exec.safe_bins_interpreter_unprofiled | warn |
-| tools.elevated.allowFrom.*.wildcard | warn |
+| tools.elevated.allowFrom.*.wildcard | critical |
 | tools.elevated.allowFrom.*.large | warn |
 
 ### Sandbox
@@ -129,6 +141,15 @@ openclaw security audit --json   # Machine-readable output
 | checkId | Severity |
 |---------|----------|
 | sandbox.docker_config_mode_off | warn |
+| sandbox.dangerous_bind_mount | critical |
+| sandbox.bind_mount_non_absolute | warn |
+| sandbox.dangerous_network_mode | critical |
+| sandbox.dangerous_seccomp_profile | critical |
+| sandbox.dangerous_apparmor_profile | critical |
+| sandbox.browser_cdp_bridge_unrestricted | warn |
+| sandbox.browser_container.hash_label_missing | warn |
+| sandbox.browser_container.hash_epoch_stale | warn |
+| sandbox.browser_container.non_loopback_publish | critical |
 | tools.profile_minimal_overridden | warn |
 | plugins.tools_reachable_permissive_policy | warn |
 
@@ -153,8 +174,41 @@ openclaw security audit --json   # Machine-readable output
 | channels.slack.commands.slash.useAccessGroups_off | critical |
 | channels.slack.commands.slash.no_allowlists | warn |
 | channels.telegram.allowFrom.invalid_entries | warn |
-| channels.telegram.groups.allowFrom.wildcard | warn |
-| channels.telegram.groups.allowFrom.missing | warn |
+| channels.telegram.groups.allowFrom.wildcard | critical |
+| channels.telegram.groups.allowFrom.missing | critical |
+
+### Plugins
+
+| checkId | Severity |
+|---------|----------|
+| plugins.extensions_no_allowlist | warn/critical |
+| plugins.installs_unpinned_npm_specs | warn |
+| plugins.installs_missing_integrity | warn |
+| plugins.installs_version_drift | warn |
+| plugins.code_safety | critical/warn |
+| plugins.code_safety.scan_failed | warn |
+| plugins.code_safety.entry_path | warn |
+| plugins.code_safety.entry_escape | critical |
+
+### Skills
+
+| checkId | Severity |
+|---------|----------|
+| skills.code_safety | critical/warn |
+| skills.code_safety.scan_failed | warn |
+
+### Other
+
+| checkId | Severity |
+|---------|----------|
+| security.exposure.open_groups_with_elevated | critical |
+| models.legacy | warn |
+| models.weak_tier | warn |
+| gateway.nodes.deny_commands_ineffective | warn |
+| hooks.installs_unpinned_npm_specs | warn |
+| hooks.installs_missing_integrity | warn |
+| hooks.installs_version_drift | warn |
+| summary.attack_surface | info |
 
 ## 4. Dangerous Config Flags
 

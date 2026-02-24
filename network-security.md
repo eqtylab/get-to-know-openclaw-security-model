@@ -83,10 +83,12 @@ Default headers applied:
 | `X-Content-Type-Options` | `nosniff` |
 | `Referrer-Policy` | `no-referrer` |
 
-The following headers are intentionally **absent** (to allow canvas/A2UI framing):
+The following headers are intentionally **absent from base/default headers** (to allow canvas/A2UI framing):
 
 - `X-Frame-Options`
 - `Content-Security-Policy`
+
+However, the **Control UI** specifically sets both of these via `applyControlUiSecurityHeaders()`: `X-Frame-Options: DENY` and a full `Content-Security-Policy` header. The absence only applies to the base security headers applied to all other responses.
 
 ---
 
@@ -154,8 +156,10 @@ Startup validation:
 | Mode | Behavior |
 |------|----------|
 | `off` | No broadcasting |
-| `minimal` (default) | Broadcasts gateway port, TLS status, display name. Omits `cliPath` and `sshPort`. |
-| `full` | Includes `cliPath`, `sshPort`, and Tailnet DNS hint (information disclosure risk). |
+| `minimal` (default) | Broadcasts gateway port, TLS status, display name, and Tailnet DNS hint. Omits `cliPath` and `sshPort`. |
+| `full` | Includes everything in `minimal` plus `cliPath` and `sshPort` (additional information disclosure risk). |
+
+> **Note:** The Tailnet DNS hint (`tailnetDns` TXT record) is included in the shared `txtBase` and is therefore disclosed in **both** `minimal` and `full` modes. Only `cliPath` and `sshPort` are gated on full mode.
 
 ### Kill Switch
 

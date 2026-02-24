@@ -84,7 +84,7 @@ tools:
 
 - **Owner-only tools**: `whatsapp_login`, `cron`, and `gateway` are automatically removed from the tool set for non-owner senders.
 
-- **Sub-agent restrictions**: The following tools are always denied for sub-agents: `gateway`, `agents_list`, `whatsapp_login`, `session_status`, `cron`, `memory_search`, `memory_get`, `sessions_send`. Leaf sub-agents (those that do not themselves spawn sub-agents) additionally lose all `sessions` tools.
+- **Sub-agent restrictions**: The following tools are always denied for sub-agents: `gateway`, `agents_list`, `whatsapp_login`, `session_status`, `cron`, `memory_search`, `memory_get`, `sessions_send`. Leaf sub-agents (those that do not themselves spawn sub-agents) are additionally denied `sessions_list`, `sessions_history`, and `sessions_spawn`. Combined with the always-denied `session_status` and `sessions_send`, this means leaf sub-agents lose all sessions-group tools **except** `subagents`.
 
 - **Plugin-only allowlist stripping**: If an allow list contains **only** plugin tools, the entire allowlist is silently stripped (treated as if no allowlist were set). To additively enable plugin tools alongside default tools, use `tools.alsoAllow` instead of `tools.allow`.
 
@@ -166,7 +166,9 @@ A curated set of binaries is considered safe for piping and data transformation.
 
 ### Default Safe Binaries
 
-`jq`, `cut`, `uniq`, `head`, `tail`, `tr`, `wc` (plus `grep` and `sort` which have additional profile constraints).
+`jq`, `cut`, `uniq`, `head`, `tail`, `tr`, `wc`.
+
+Note: `grep` and `sort` have pre-built safe bin profiles available (in `SAFE_BIN_PROFILE_FIXTURES`) but are **not** included in the default set. To enable them, they must be explicitly added via the `tools.exec.safeBins` configuration.
 
 ### Safe Bin Profiles
 
@@ -217,17 +219,22 @@ OpenClaw supports Docker-based sandboxing for exec commands and browser sessions
 
 ### Docker Container Security Defaults
 
-The following flags are applied **unconditionally** and cannot be disabled:
+The following flag is applied **unconditionally** and cannot be disabled:
 
 ```
---read-only
---tmpfs /tmp
---tmpfs /var/tmp
---tmpfs /run
---network none
---cap-drop ALL
 --security-opt no-new-privileges
 ```
+
+The following flags are applied **by default** with secure defaults, but can be overridden via configuration:
+
+| Flag | Default | Config Override |
+|------|---------|----------------|
+| `--read-only` | Enabled | `docker.readOnlyRoot: false` disables it |
+| `--tmpfs /tmp`, `--tmpfs /var/tmp`, `--tmpfs /run` | Enabled | Controlled by tmpfs configuration |
+| `--network none` | Enabled | `docker.network: "bridge"` (or other Docker network modes) |
+| `--cap-drop ALL` | Enabled | `docker.capDrop: []` removes the restriction |
+
+**Warning**: Overriding these defaults weakens the sandbox security posture.
 
 Optional security features (configurable):
 
@@ -261,8 +268,10 @@ Optional security features (configurable):
 | Mode | Mount Point | Permissions |
 |------|-------------|-------------|
 | `none` | Sandbox workspace (default) | Isolated, no host access |
-| `ro` | `/agent` | Read-only access to host workspace |
+| `ro` | `/workspace` (with `:ro` suffix) | Read-only access to host workspace |
 | `rw` | `/workspace` | Read-write access to host workspace |
+
+The main workspace is always mounted at `/workspace` regardless of mode. The `/agent` mount point is used only when the agent workspace differs from the main workspace, providing the agent its own workspace directory.
 
 ### Environment Variable Sanitization
 
@@ -270,10 +279,10 @@ Environment variables are sanitized before being passed into sandboxed container
 
 **Blocked patterns** (variables matching any of these are removed):
 
-- API key variables: `ANTHROPIC_*`, `OPENAI_*`, `GEMINI_*`, and similar provider-specific keys
+- Exact API key variables: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, and similar provider-specific keys (matched by exact name, not wildcard)
 - Bot tokens
 - Cloud credentials
-- Generic sensitive pattern: `/_?(API_KEY|TOKEN|PASSWORD|PRIVATE_KEY|SECRET)$/i`
+- Generic sensitive catch-all pattern: `/_?(API_KEY|TOKEN|PASSWORD|PRIVATE_KEY|SECRET)$/i` (covers most other sensitive variables)
 - Values containing null bytes
 - Values exceeding 32,768 characters
 
@@ -312,7 +321,7 @@ Sandboxed sessions have their own default tool policy:
 
 **Allow**:
 ```
-exec, process, read, write, edit, apply_patch, image, sessions_*, session_status
+exec, process, read, write, edit, apply_patch, image, sessions_list, sessions_history, sessions_send, sessions_spawn, subagents, session_status
 ```
 
 **Deny**:
@@ -334,7 +343,9 @@ Elevated mode allows agents to run commands directly on the gateway host instead
 
 | Command | Behavior |
 |---------|----------|
+| `/elevated off` | Disable elevated mode; commands run inside the sandbox (default) |
 | `/elevated on` | Run on gateway host **with** approval (`security=allowlist`, `ask=on-miss`) |
+| `/elevated ask` | Run on gateway host, prompting for approval on every exec call |
 | `/elevated full` | Run on host with **no** approval, **no** allowlist, **no** restrictions |
 
 ### Access Gates
@@ -393,7 +404,7 @@ Before executing Python or Node.js scripts, a preflight scan is performed:
 
 ## 9. Gateway HTTP Tool Deny List
 
-When tools are invoked via the HTTP gateway (`POST /tools/invoke`), the following tools are unconditionally denied:
+When tools are invoked via the HTTP gateway (`POST /tools/invoke`), the following tools are denied **by default**:
 
 | Tool | Reason |
 |------|--------|
@@ -402,4 +413,4 @@ When tools are invoked via the HTTP gateway (`POST /tools/invoke`), the followin
 | `gateway` | Reconfiguration risk |
 | `whatsapp_login` | Hangs on HTTP (requires interactive flow) |
 
-These restrictions apply regardless of the caller's permissions or the session's tool policy. They are hardcoded in the gateway layer and cannot be overridden by configuration.
+These are default deny entries that can be overridden via `gateway.tools.allow`. If a tool from the deny list appears in the `gateway.tools.allow` configuration, the deny entry is removed and the tool becomes available through the gateway.

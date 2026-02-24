@@ -84,7 +84,7 @@ Config values support `!` prefix for shell command execution (e.g., `"!pass show
 
 OpenClaw layers these on top of Pi:
 
-- Docker sandboxing (read-only root, no network, cap-drop ALL, no-new-privileges)
+- Docker sandboxing (read-only root, no network, cap-drop ALL, no-new-privileges). Note: `readOnlyRoot`, `network`, and `capDrop` are secure **default** configuration values that can be overridden; only `--security-opt no-new-privileges` is unconditionally hardcoded.
 - Tool profiles and allow/deny policy pipeline
 - Exec approval system with allowlists and safeBins
 - Channel access control (DM pairing, group allowlists)

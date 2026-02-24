@@ -57,9 +57,9 @@ Recommendations:
 - `"tools"` (default): redacts sensitive patterns in tool output/summaries
 - `"off"`: no redaction (flagged by security audit)
 
-Masking algorithm: tokens < 18 chars -> `***`; longer -> first 6 + `...` + last 4.
+Masking algorithm: tokens < 18 chars -> `***`; longer -> first 6 + `…` (U+2026) + last 4.
 
-16 default redaction patterns covering:
+17 default redaction patterns covering:
 - ENV assignments (KEY=, TOKEN=, SECRET=, PASSWORD=)
 - JSON fields ("apiKey", "token", "secret", etc.)
 - CLI flags (--api-key, --token, --secret, --password)
@@ -67,13 +67,14 @@ Masking algorithm: tokens < 18 chars -> `***`; longer -> first 6 + `...` + last 
 - PEM private key blocks
 - Token prefixes: sk-\*, ghp\_\*, github\_pat\_\*, xox[baprs]-\*, xapp-\*, gsk\_\*, AIza\*, pplx-\*, npm\_\*
 - Telegram bot tokens (bot\<digits\>:\<alphanumeric\>)
+- Bare Telegram tokens (`\b(\d{6,}:[A-Za-z0-9_-]{20,})\b`)
 
 Custom patterns via `logging.redactPatterns`: accepts regex strings or `/pattern/flags`. Custom patterns REPLACE (not augment) defaults.
 
 ## 5. Gateway Credential Resolution
 
-Local mode: config token -> env `OPENCLAW_GATEWAY_TOKEN` -> legacy `CLAWDBOT_GATEWAY_TOKEN`
-Remote mode: `gateway.remote.token` -> env -> local config (configurable fallback)
+Server-side (gateway startup): config -> env `OPENCLAW_GATEWAY_TOKEN` (no legacy fallback; `includeLegacyEnv: false`)
+Client-side (connecting to remote): env `OPENCLAW_GATEWAY_TOKEN` -> legacy `CLAWDBOT_GATEWAY_TOKEN` -> config (env-first, with legacy fallback)
 
 Hook token: via `Authorization: Bearer <token>` or `X-OpenClaw-Token` header. Must differ from gateway auth token (enforced at startup).
 
@@ -82,10 +83,10 @@ Auto-generated token: 48 hex chars (24 random bytes) if no token configured. Per
 ## 6. Environment Variable Sanitization (Sandbox)
 
 Before passing env vars to Docker containers:
-- Blocked: ANTHROPIC\_API\_KEY, OPENAI\_API\_KEY, GEMINI\_API\_KEY, OPENROUTER\_API\_KEY, MINIMAX\_API\_KEY, TELEGRAM\_BOT\_TOKEN, DISCORD\_BOT\_TOKEN, SLACK\_BOT\_TOKEN, AWS\_SECRET\_ACCESS\_KEY, GH\_TOKEN, GITHUB\_TOKEN
+- Blocked: ANTHROPIC\_API\_KEY, OPENAI\_API\_KEY, GEMINI\_API\_KEY, OPENROUTER\_API\_KEY, MINIMAX\_API\_KEY, COHERE\_API\_KEY, AI\_GATEWAY\_API\_KEY, AZURE\_API\_KEY, AZURE\_OPENAI\_API\_KEY, ELEVENLABS\_API\_KEY, SYNTHETIC\_API\_KEY, TELEGRAM\_BOT\_TOKEN, DISCORD\_BOT\_TOKEN, SLACK\_(BOT|APP)\_TOKEN, LINE\_CHANNEL\_SECRET, LINE\_CHANNEL\_ACCESS\_TOKEN, AWS\_SECRET\_ACCESS\_KEY, AWS\_SECRET\_KEY, AWS\_SESSION\_TOKEN, GH\_TOKEN, GITHUB\_TOKEN, OPENCLAW\_GATEWAY\_TOKEN, OPENCLAW\_GATEWAY\_PASSWORD
 - Generic pattern: `/_?(API_KEY|TOKEN|PASSWORD|PRIVATE_KEY|SECRET)$/i`
 - Null bytes -> blocked
-- Values > 32768 chars -> blocked
+- Values > 32768 chars -> warned (not blocked; variable still passes through)
 - Strict mode: only LANG, LC\_\*, PATH, HOME, USER, SHELL, TERM, TZ, NODE\_ENV
 
 ## 7. Secret Scanning (detect-secrets)

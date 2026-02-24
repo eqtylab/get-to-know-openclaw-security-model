@@ -24,7 +24,7 @@ through a resolution chain (see [1.5 Auth Mode Resolution Priority](#15-auth-mod
 | Token | `"token"` | Default. Shared bearer token for programmatic access. |
 | Password | `"password"` | Human-facing access, required for Tailscale Funnel. |
 | Trusted proxy | `"trusted-proxy"` | Reverse-proxy deployments (nginx, Caddy, etc.). |
-| None | `"none"` | Disables conventional auth entirely. Only viable when `allowTailscale` provides an alternate path. |
+| None | `"none"` | **WARNING: Most dangerous setting.** Accepts all connections without any authentication. |
 
 #### 1.1.1 Token Auth
 
@@ -63,11 +63,11 @@ gateway:
 
 ```yaml
 gateway:
+  trustedProxies:
+    - "10.0.0.0/8"
+    - "172.16.0.0/12"
   auth:
     mode: "trusted-proxy"
-    trustedProxies:
-      - "10.0.0.0/8"
-      - "172.16.0.0/12"
     requiredHeaders:
       - "X-Forwarded-For"
       - "X-Real-IP"
@@ -98,9 +98,14 @@ gateway:
     mode: "none"
 ```
 
-- The gateway **refuses WebSocket connections** outright (fail-closed behavior).
-- This mode is only functional when `allowTailscale` provides an alternate
-  authentication path. Without it, the gateway is effectively unreachable.
+- **WARNING:** The gateway **accepts all WebSocket connections without any
+  authentication**. The auth handler returns `{ ok: true, method: "none" }` for
+  every request. This is the most dangerous setting — any client can connect and
+  interact with the gateway without proving identity.
+- Use this mode only in fully isolated environments (e.g., localhost-only binds
+  behind a separate authentication layer). Combining with `allowTailscale` can
+  provide an alternate identity path, but mode `"none"` itself performs no
+  authentication whatsoever.
 
 ### 1.2 Tailscale Identity Auth (Implicit)
 
@@ -167,8 +172,12 @@ config gateway.auth.token  →  env OPENCLAW_GATEWAY_TOKEN  →  (auto-generate)
 gateway.remote.token  →  env OPENCLAW_GATEWAY_TOKEN  →  local config (configurable fallback)
 ```
 
-**Legacy environment variables:** The env var `CLAWDBOT_GATEWAY_TOKEN` is still
-recognized for backward compatibility. It is checked after the primary env var.
+**Legacy environment variables:** The env var `CLAWDBOT_GATEWAY_TOKEN` is recognized
+**only for client-side credential resolution** (i.e., when connecting to a remote
+gateway). The gateway's own startup auth sets `includeLegacyEnv: false`, so
+`CLAWDBOT_GATEWAY_TOKEN` is **not** used when the gateway resolves its own auth
+credentials. It is checked after the primary env var only in the client/remote
+credential resolution path.
 
 ### 1.5 Auth Mode Resolution Priority
 
@@ -281,7 +290,7 @@ implementation uses an **in-memory sliding window** keyed by `{scope, clientIp}`
 |---|---|---|---|---|
 | `shared-secret` | 10 | 60s | 300s | Main gateway auth (token/password) |
 | `device-token` | 10 | 60s | 300s | Device token verification |
-| `hook-auth` | 20 | 60s | (same) | Webhook endpoint auth; always-on, separate limiter |
+| `hook-auth` | 20 | 60s | 60s | Webhook endpoint auth; always-on, separate limiter |
 
 **Configuration:**
 
@@ -384,7 +393,14 @@ of a group chat may interact with the bot.
 | `disabled` | All group messages blocked. | |
 | `allowlist` | Only senders in `effectiveGroupAllowFrom` may interact. | Yes (this is the default) |
 | `open` | All group members may interact. Audit flags as critical. | |
-| `requireMention` | Bot must be @mentioned for the message to be processed, unless an authorized command bypasses the mention requirement. | |
+
+**`requireMention` (per-group boolean):**
+
+In addition to the group policy, each group's configuration has an optional
+`requireMention?: boolean` property. When `true`, the bot must be @mentioned for
+the message to be processed, unless an authorized command bypasses the mention
+requirement. This setting is independent of the group policy and can be combined
+with any of the three policies above.
 
 **Key rule:** Replying to a bot message (implicit mention) does **not** bypass sender
 allowlists. Even if a disallowed sender replies directly to the bot's message, the
@@ -434,6 +450,7 @@ between users.
 | Scope | Behavior | Risk |
 |---|---|---|
 | `main` | All DMs share a single session. | **Context leakage** if multiple users DM the bot. One user sees conversation history and tool outputs from another. This is the default for backward compatibility. |
+| `per-peer` | Each unique sender gets a single session across all channels. Session key: `agent:<agentId>:direct:<peerId>`. | Useful when a user should have one continuous conversation regardless of channel, but different users must be isolated. |
 | `per-channel-peer` | Each unique `(channel, sender)` pair gets its own isolated session. | Recommended for multi-user deployments. |
 | `per-account-channel-peer` | Each unique `(account, channel, sender)` triple gets its own session. | Required when running multiple bot accounts on the same channel provider. |
 
@@ -454,10 +471,17 @@ Telegram, identity links can route both conversations to the same session.
 session:
   dmScope: "per-channel-peer"
   identityLinks:
-    - channels:
-        signal: "+15551234567"
-        telegram: "alice_username"
+    alice:
+      - "+15551234567"
+      - "alice_username"
+    bob:
+      - "+15559876543"
+      - "bob_tg"
 ```
+
+The `identityLinks` field is a flat record (map) where each key is a canonical name
+and the value is an array of identifier strings. This maps to the Zod schema
+`z.record(z.string(), z.array(z.string()))`.
 
 This merges the sessions so Alice has a continuous conversation regardless of which
 channel she uses. Without identity links, she would have two independent sessions.

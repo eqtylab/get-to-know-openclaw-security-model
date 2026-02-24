@@ -1,6 +1,6 @@
 # Get to Know OpenClaw Security
 
-*This guide was produced through extensive research via Claude Code and coordinated sub-agents, validated against the OpenClaw and Pi Coding Agent source code. Transparency matters.*
+*This guide was produced through extensive research via Claude Code and coordinated sub-agents, validated against the OpenClaw and Pi Coding Agent source code.*
 
 ## What is OpenClaw
 
