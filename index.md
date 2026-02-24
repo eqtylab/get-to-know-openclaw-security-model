@@ -55,7 +55,9 @@ Every security domain, what it covers, and where to find the details.
 | Plugins & Extensions | [plugins-extensions.md](plugins-extensions.md) | Plugin loading, allowlists, HTTP routes, npm risks |
 | Pi Agent Framework | [pi-agent-security.md](pi-agent-security.md) | Extension hooks, tool blocking, in-process trust model |
 | Credentials & Secrets | [credentials-secrets.md](credentials-secrets.md) | Storage locations, file permissions, redaction, rotation |
+| Agent Configuration | [agent-configuration.md](agent-configuration.md) | System prompts, SOUL.md, SKILL.md, bootstrap files, plugin hooks, sanitization |
 | Audit & Hardening | [audit-hardening.md](audit-hardening.md) | Security audit CLI, all checkIds, detect-secrets |
+| **Goto Spec** | [goto-spec.md](goto-spec.md) | **Enterprise hardening baseline, OSCAL-inspired control schema, validation** |
 
 ---
 
