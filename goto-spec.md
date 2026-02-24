@@ -36,6 +36,20 @@ Lock down who can talk to the gateway at all. Set `auth.mode` to `token` or `pas
 - `gateway.remote.tlsFingerprint` — certificate pin for remote node connections
 - `tailscale.mode` — `off`, `serve`, or `funnel`
 
+### Device Identity & Pairing
+
+Every client that connects over WebSocket must prove its identity via Ed25519 challenge-response. The gateway sends a random nonce, the client signs it with its device keypair, and the server verifies the signature against the registered public key. Timestamps are checked within a 2-minute skew window to prevent replay attacks. Loopback connections are auto-approved — remote connections require explicit pairing approval. Unpaired devices have all scopes stripped, meaning they can't call any scope-guarded method until identity is established. This is the default-deny posture. Pairing requests expire after 5 minutes. Keep the device keypair file locked down at `0o600`.
+
+- `~/.openclaw/identity/device.json` — Ed25519 keypair (file mode `0o600`)
+- Pairing timeout — 5 minutes (fixed)
+- Challenge-response nonce — random per connection, signed with timestamp
+- Timestamp skew — +/- 2 minutes to prevent replay
+- Auto-approval — loopback and same-Tailscale-node connections only
+- Roles: `admin` (full access), `operator` (read, write, approvals, pairing), `viewer` (read-only)
+- Scopes: `operator.read`, `operator.write`, `operator.approvals`, `operator.pairing`, `operator.exec`
+- Connections without verified device identity — all scopes stripped (default-deny)
+- `gateway.controlUi.dangerouslyDisableDeviceAuth` — bypasses all of the above (never in production)
+
 ### Sessions & Channels
 
 Control who can message the agent and prevent conversations from leaking between users. Set `dmScope` to `per-channel-peer` so each sender gets their own isolated session. Use `pairing` or `allowlist` DM policies to stop random people from chatting with your bot. In groups, require @mention so the agent doesn't respond to every message. Use `toolsBySender` to give different group members different capabilities.
