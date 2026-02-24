@@ -58,6 +58,7 @@ Every security domain, what it covers, and where to find the details.
 | Pi Agent Framework | [pi-agent-security.md](pi-agent-security.md) | Extension hooks, tool blocking, in-process trust model |
 | Credentials & Secrets | [credentials-secrets.md](credentials-secrets.md) | Storage locations, file permissions, redaction, rotation |
 | Agent Configuration | [agent-configuration.md](agent-configuration.md) | System prompts, SOUL.md, SKILL.md, bootstrap files, plugin hooks, sanitization |
+| ClawHub & Skills Safety | [clawhub-skills-safety.md](clawhub-skills-safety.md) | ClawHub registry, VirusTotal scanning, skill scanner, moderation, supply chain risks |
 | Audit & Hardening | [audit-hardening.md](audit-hardening.md) | Security audit CLI, all checkIds, detect-secrets |
 | **Goto Spec** | [goto-spec.md](goto-spec.md) | **Enterprise hardening baseline, OSCAL-inspired control schema, validation** |
 

@@ -27,6 +27,7 @@ export default defineConfig({
           { text: 'Agent Configuration', link: '/agent-configuration' },
           { text: 'Plugins & Extensions', link: '/plugins-extensions' },
           { text: 'Pi Agent Security', link: '/pi-agent-security' },
+          { text: 'ClawHub & Skills Safety', link: '/clawhub-skills-safety' },
           { text: 'Credentials & Secrets', link: '/credentials-secrets' },
           { text: 'Audit & Hardening', link: '/audit-hardening' }
         ]
