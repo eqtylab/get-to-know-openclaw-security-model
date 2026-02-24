@@ -1,4 +1,6 @@
-# OpenClaw Security Documentation
+# Get to Know OpenClaw Security
+
+*This guide was produced through extensive research via Claude Code and coordinated sub-agents, validated against the OpenClaw and Pi Coding Agent source code. Transparency matters.*
 
 ## What is OpenClaw
 
