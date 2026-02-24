@@ -18,6 +18,8 @@ Every security-relevant setting in OpenClaw, organized by ring.
 
 ### Gateway & Authentication
 
+Lock down who can talk to the gateway at all. Set `auth.mode` to `token` or `password` to prevent unauthenticated access. Bind to `loopback` to keep the gateway off the network entirely. Enable rate limiting to stop brute-force attempts. Behind a reverse proxy, use `trusted-proxy` mode with explicit CIDR ranges so IP headers can't be spoofed. Never disable device auth in production — that flag exists for local development only.
+
 - `gateway.auth.mode` — `token`, `password`, `trusted-proxy`, or `none`
 - `gateway.auth.token` — shared secret (48+ hex chars recommended)
 - `gateway.auth.password` — alternative to token auth
@@ -36,6 +38,8 @@ Every security-relevant setting in OpenClaw, organized by ring.
 
 ### Sessions & Channels
 
+Control who can message the agent and prevent conversations from leaking between users. Set `dmScope` to `per-channel-peer` so each sender gets their own isolated session. Use `pairing` or `allowlist` DM policies to stop random people from chatting with your bot. In groups, require @mention so the agent doesn't respond to every message. Use `toolsBySender` to give different group members different capabilities.
+
 - `session.dmScope` — `per-channel-peer`, `per-account-channel-peer`, or `global`
 - `channels.<provider>.dmPolicy` — `pairing`, `allowlist`, `open`, or `disabled`
 - `channels.<provider>.allowFrom` — explicit sender allowlist
@@ -45,6 +49,8 @@ Every security-relevant setting in OpenClaw, organized by ring.
 - `channels.<provider>.groups.*.toolsBySender.*` — per-sender tool policy in groups
 
 ### Tools & Exec
+
+Restrict what the agent can do. Pick a `profile` that matches your use case — `messaging` for chat-only, `coding` for development, never `full` for untrusted users. Deny dangerous tool groups explicitly. Set `exec.security` to `deny` to block all shell commands, or `allowlist` to permit only specific commands. Set `exec.ask` to `always` so every shell command requires human approval. Restrict filesystem access to the workspace directory to prevent path traversal.
 
 - `tools.profile` — `minimal`, `coding`, `messaging`, or `full`
 - `tools.allow` — explicit tool allowlist
@@ -58,6 +64,8 @@ Every security-relevant setting in OpenClaw, organized by ring.
 
 ### Sandbox
 
+Isolate agent execution from the host. Set `mode` to `all` so every agent runs inside a Docker container with read-only root, no network, all capabilities dropped, and no privilege escalation. Use `session` scope so each user gets a fresh container. Set workspace access to `none` unless the agent explicitly needs to read or write files. Add resource limits to prevent fork bombs and memory exhaustion.
+
 - `tools.sandbox.mode` — `off`, `non-main`, or `all`
 - `tools.sandbox.scope` — `session`, `agent`, or `shared`
 - `tools.sandbox.workspaceAccess` — `none`, `ro`, or `rw`
@@ -69,10 +77,14 @@ Every security-relevant setting in OpenClaw, organized by ring.
 
 ### Elevated Mode
 
+Elevated mode lets the agent break out of the sandbox and execute on the host. Keep it disabled unless you have a specific need for host-level operations. If you enable it, lock `allowFrom` to specific sender IDs per provider — never use a wildcard. `/elevated on` requires approval per command. `/elevated full` removes all restrictions.
+
 - `tools.elevated.enabled` — enable host escape hatch (default: false)
 - `tools.elevated.allowFrom.<provider>` — per-provider sender allowlist (never wildcard)
 
 ### Hooks
+
+Hooks let external systems trigger agent turns via HTTP. Use a separate bearer token from the gateway token — if one leaks, the other still holds. Keep `allowRequestSessionKey` off to prevent external callers from injecting into arbitrary sessions. Keep `allowUnsafeExternalContent` off so external content gets wrapped with boundary markers, security warnings, and homoglyph detection.
 
 - `hooks.token` — bearer token for hook endpoint (must differ from gateway token)
 - `hooks.allowRequestSessionKey` — allow external session key injection (default: false)
@@ -81,13 +93,17 @@ Every security-relevant setting in OpenClaw, organized by ring.
 
 ### Plugins
 
+Plugins run in-process with full gateway privileges. Only load plugins you trust. Use an explicit allowlist to enumerate approved plugin IDs. Use the deny list to block specific plugins — deny takes precedence over allow. Be aware that plugin HTTP routes are NOT protected by gateway auth — plugins must implement their own authentication.
+
 - `plugins.allow` — trusted plugin ID allowlist
 - `plugins.deny` — explicit plugin deny list (takes precedence)
 
-### Agent Configuration
+### Agent Prompting & Configuration
+
+How you prompt the agent matters. SOUL.md defines the agent's persona and tone — whoever controls the workspace controls the persona. SKILL.md files are effectively executable instructions in natural language that the agent follows with full tool access. Bootstrap files (AGENTS.md, TOOLS.md, USER.md) are injected into the system prompt at session start with no sanitization. Plugins can override the entire system prompt or redirect the model to a different provider via `before_prompt_build` and `before_model_resolve` hooks. Hash owner IDs to prevent phone numbers and usernames from appearing in transcripts. See [Agent Configuration](agent-configuration.md) for the full breakdown.
 
 - `agents.<id>.model` — model selection per agent
-- `agents.<id>.workspace` — workspace directory (controls SOUL.md, bootstrap files)
+- `agents.<id>.workspace` — workspace directory (controls SOUL.md, SKILL.md, bootstrap files)
 - `agents.<id>.skipBootstrap` — skip bootstrap file injection
 - `agents.<id>.elevatedDefault` — default elevated mode state
 - `agents.<id>.tools.allow` / `tools.deny` — per-agent tool policy
@@ -96,14 +112,21 @@ Every security-relevant setting in OpenClaw, organized by ring.
 - `agents.defaults.heartbeat.prompt` — custom heartbeat text injected into system prompt
 - `agents.defaults.bootstrapMaxChars` — per-file bootstrap character limit
 - `agents.defaults.bootstrapTotalMaxChars` — total bootstrap character limit
+- SOUL.md — persona and tone definition (workspace-controlled, no sanitization)
+- SKILL.md — executable natural-language instructions (discovered from global, project, and package locations)
+- Bootstrap files — AGENTS.md, TOOLS.md, USER.md injected at session start
 
 ### Credentials & Logging
+
+Keep secrets out of logs and lock down file permissions. Leave `redactSensitive` on `tools` (the default) so API keys, tokens, and passwords are masked in output. Run `openclaw security audit --fix` to auto-set file permissions — `0o700` on directories, `0o600` on credential files. Use full-disk encryption on the gateway host.
 
 - `logging.redactSensitive` — `tools` (default) or `off`
 - `logging.redactPatterns` — custom regex patterns (replaces defaults)
 - File permissions: `~/.openclaw/` at `0o700`, all credential files at `0o600`
 
 ### Discovery
+
+Control what the gateway advertises on the network. Set mDNS to `off` or `minimal` to stop broadcasting gateway IP, port, and Tailnet details. Disable wide-area DNS-SD unless you specifically need Tailnet service discovery.
 
 - `discovery.mdns.mode` — `off`, `minimal`, or `full`
 - `discovery.wideArea.enabled` — DNS-SD over Tailnet (default: false)

@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  title: 'Get to Know OpenClaw Security',
+  title: 'OpenClaw Security',
   description: 'A guide to understanding and hardening OpenClaw',
   themeConfig: {
     nav: [
@@ -11,7 +11,7 @@ export default defineConfig({
     ],
     sidebar: [
       {
-        text: 'Get to Know OpenClaw Security',
+        text: 'Guide',
         items: [
           { text: 'Overview', link: '/' },
           { text: 'Goto Spec', link: '/goto-spec' },
