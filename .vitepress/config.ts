@@ -29,7 +29,8 @@ export default defineConfig({
           { text: 'Pi Agent Security', link: '/pi-agent-security' },
           { text: 'ClawHub & Skills Safety', link: '/clawhub-skills-safety' },
           { text: 'Credentials & Secrets', link: '/credentials-secrets' },
-          { text: 'Audit & Hardening', link: '/audit-hardening' }
+          { text: 'Audit & Hardening', link: '/audit-hardening' },
+          { text: 'Formal Verification', link: '/formal-verification' }
         ]
       }
     ],

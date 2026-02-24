@@ -288,5 +288,5 @@ The VirusTotal partnership is part of a broader security initiative at OpenClaw,
 - A public security roadmap tracking defensive engineering goals
 - Security audit covering the entire codebase
 - Formal security reporting process at security@openclaw.ai
-- Formal verification models (TLA+/TLC) for gateway exposure, pairing, ingress gating, and session isolation
+- [Formal verification models](formal-verification.md) (TLA+/TLC) for gateway exposure, pairing, ingress gating, and session isolation
 - Separate security repositories: `openclaw/openclaw` (core), `openclaw/clawhub` (registry), `openclaw/trust` (threat model)
