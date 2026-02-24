@@ -22,6 +22,12 @@ export default defineConfig({
         items: [
           { text: 'Overview', link: '/' },
           { text: 'Goto Spec', link: '/goto-spec' },
+          { text: 'Security Checklist', link: '/security-checklist' },
+        ]
+      },
+      {
+        text: 'Security Domains',
+        items: [
           { text: 'Access Control', link: '/access-control' },
           { text: 'Tool Security', link: '/tool-security' },
           { text: 'Network Security', link: '/network-security' },
@@ -30,9 +36,8 @@ export default defineConfig({
           { text: 'Pi Agent Security', link: '/pi-agent-security' },
           { text: 'ClawHub & Skills Safety', link: '/clawhub-skills-safety' },
           { text: 'Credentials & Secrets', link: '/credentials-secrets' },
-          { text: 'Security Checklist', link: '/security-checklist' },
           { text: 'Audit & Hardening', link: '/audit-hardening' },
-          { text: 'Formal Verification', link: '/formal-verification' }
+          { text: 'Formal Verification', link: '/formal-verification' },
         ]
       }
     ],
