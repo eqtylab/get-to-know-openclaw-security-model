@@ -6,7 +6,9 @@ An interactive RMF-style assessment tool for OpenClaw deployments. Walk through 
 
 ---
 
-<SecurityChecklist />
+<ClientOnly>
+  <SecurityChecklist />
+</ClientOnly>
 
 <style>
 /* Widen the doc content area on this page only */

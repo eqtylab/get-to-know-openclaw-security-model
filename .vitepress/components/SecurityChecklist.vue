@@ -85,12 +85,6 @@ function handleReset() {
   showResetConfirm.value = false
 }
 
-function exitDemo() {
-  const url = new URL(window.location.href)
-  url.searchParams.delete('demo')
-  window.location.href = url.toString()
-}
-
 async function copyCheck(text: string, id: string) {
   await navigator.clipboard.writeText(text)
   copiedId.value = id
@@ -121,11 +115,6 @@ const statusIcons: Record<ControlStatus, string> = {
 
 <template>
   <div class="checklist-root">
-    <!-- Demo Mode Banner -->
-    <div v-if="isDemo" class="demo-banner">
-      Demo Mode — Sample compliance data. <a href="#" @click.prevent="exitDemo">Exit demo</a>
-    </div>
-
     <!-- Dashboard Header -->
     <div class="dashboard">
       <div class="dashboard-score">
@@ -402,35 +391,6 @@ const statusIcons: Record<ControlStatus, string> = {
 .checklist-root {
   max-width: 100%;
   font-size: 14px;
-}
-
-/* Demo banner */
-.demo-banner {
-  padding: 10px 16px;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  font-size: 13px;
-  font-weight: 500;
-  background: #ebf8ff;
-  color: #2b6cb0;
-  border: 1px solid #bee3f8;
-  text-align: center;
-}
-
-.demo-banner a {
-  color: #2b6cb0;
-  text-decoration: underline;
-  margin-left: 4px;
-}
-
-:root.dark .demo-banner {
-  background: #1a365d;
-  color: #90cdf4;
-  border-color: #2a4365;
-}
-
-:root.dark .demo-banner a {
-  color: #90cdf4;
 }
 
 /* Dashboard */
