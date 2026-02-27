@@ -1,5 +1,5 @@
 import { useLocalStorage } from '@vueuse/core'
-import { computed } from 'vue'
+import { computed, ref, type Ref } from 'vue'
 import { controls, categories, profiles, type ChecklistControl } from '../checklist-data'
 
 export type ControlStatus = 'compliant' | 'non-compliant' | 'not-applicable' | 'unreviewed'
@@ -24,10 +24,76 @@ const DEFAULT_STATE: ChecklistState = {
   controls: {},
 }
 
+function checkDemoMode(): boolean {
+  if (typeof window === 'undefined') return false
+  return new URLSearchParams(window.location.search).get('demo') === 'true'
+}
+
+function demoHash(s: string): number {
+  let h = 0
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0
+  return Math.abs(h)
+}
+
+function generateDemoControls(): Record<string, ControlState> {
+  const result: Record<string, ControlState> = {}
+  const now = '2026-02-25T14:30:00.000Z'
+
+  const bySeverity: Record<string, ChecklistControl[]> = { critical: [], high: [], medium: [], low: [] }
+  for (const c of controls) bySeverity[c.severity].push(c)
+
+  // Critical controls mostly resolved, lower severities trail behind
+  const rates: Record<string, { compliant: number; nonCompliant: number }> = {
+    critical: { compliant: 0.92, nonCompliant: 0.08 },
+    high:     { compliant: 0.78, nonCompliant: 0.14 },
+    medium:   { compliant: 0.67, nonCompliant: 0.20 },
+    low:      { compliant: 0.80, nonCompliant: 0.20 },
+  }
+
+  const ncNotes = [
+    'Pending infrastructure migration',
+    'Scheduled for next hardening sprint',
+    'Requires upstream config change',
+    'Blocked by dependency update',
+    'Under review with platform team',
+  ]
+
+  for (const [sev, list] of Object.entries(bySeverity)) {
+    const shuffled = [...list].sort((a, b) => demoHash(a.id) - demoHash(b.id))
+    const rate = rates[sev] || rates.medium
+    const compliantCount = Math.round(shuffled.length * rate.compliant)
+    const ncCount = Math.round(shuffled.length * rate.nonCompliant)
+
+    shuffled.forEach((c, i) => {
+      if (i < compliantCount) {
+        result[c.id] = { status: 'compliant', notes: '', lastModified: now }
+      } else if (i < compliantCount + ncCount) {
+        result[c.id] = {
+          status: 'non-compliant',
+          notes: ncNotes[demoHash(c.id) % ncNotes.length],
+          lastModified: now,
+        }
+      }
+      // remainder left out → getControlState returns 'unreviewed'
+    })
+  }
+
+  return result
+}
+
 export function useChecklistState() {
-  const state = useLocalStorage<ChecklistState>('openclaw-security-checklist', DEFAULT_STATE, {
-    mergeDefaults: true,
-  })
+  const isDemo = checkDemoMode()
+
+  const state: Ref<ChecklistState> = isDemo
+    ? ref({
+        version: 1,
+        lastUpdated: '2026-02-25T14:30:00.000Z',
+        profile: 'enterprise',
+        controls: generateDemoControls(),
+      })
+    : useLocalStorage<ChecklistState>('openclaw-security-checklist', DEFAULT_STATE, {
+        mergeDefaults: true,
+      })
 
   function getControlState(id: string): ControlState {
     return state.value.controls[id] || { status: 'unreviewed', notes: '', lastModified: '' }
@@ -160,5 +226,6 @@ export function useChecklistState() {
     exportState,
     stats,
     categoryStats,
+    isDemo,
   }
 }
